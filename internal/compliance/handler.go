@@ -62,6 +62,15 @@ func (h *Handler) Check(w http.ResponseWriter, r *http.Request) {
 		ETAStatus:       ETAStatus(body.ETAStatus),
 	}
 
+	if err := ValidateCheckRequest(req); err != nil {
+		http.Error(
+			w,
+			err.Error(),
+			http.StatusBadRequest,
+		)
+		return
+	}
+
 	result := h.service.Check(r.Context(), req)
 
 	w.Header().Set("Content-Type", "application/json")

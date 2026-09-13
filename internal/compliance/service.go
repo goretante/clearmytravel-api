@@ -1,8 +1,6 @@
 package compliance
 
-import (
-	"context"
-)
+import "context"
 
 type Service struct {
 	evaluators []Evaluator
@@ -14,7 +12,10 @@ func NewService(evaluators ...Evaluator) *Service {
 	}
 }
 
-func (s *Service) Check(ctx context.Context, req CheckRequest) CheckResult {
+func (s *Service) Check(
+	ctx context.Context,
+	req CheckRequest,
+) CheckResult {
 	result := CheckResult{
 		Status:       StatusCleared,
 		Requirements: make([]Requirement, 0, len(s.evaluators)),

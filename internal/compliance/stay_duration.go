@@ -11,6 +11,31 @@ type StayRule struct {
 	Source          RuleSource
 }
 
+func calculateStayDays(
+	departure time.Time,
+	returnDate time.Time,
+) int {
+	departureDate := dateOnly(departure)
+	returnDateOnly := dateOnly(returnDate)
+
+	return int(
+		returnDateOnly.Sub(departureDate).Hours() / 24,
+	)
+}
+
+func dateOnly(t time.Time) time.Time {
+	return time.Date(
+		t.Year(),
+		t.Month(),
+		t.Day(),
+		0,
+		0,
+		0,
+		0,
+		time.UTC,
+	)
+}
+
 func evaluateStayRule(
 	rule StayRule,
 	req CheckRequest,
@@ -20,8 +45,9 @@ func evaluateStayRule(
 		Source: &rule.Source,
 	}
 
-	stayDays := int(
-		req.ReturnDate.Sub(req.DepartureDate).Hours() / 24,
+	stayDays := calculateStayDays(
+		req.DepartureDate,
+		req.ReturnDate,
 	)
 
 	if stayDays > rule.MaxStayDays {
