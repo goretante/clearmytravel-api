@@ -49,6 +49,17 @@ type StayRule struct {
 	UpdatedAt       pgtype.Timestamptz
 }
 
+type Trip struct {
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	PassportID      pgtype.UUID
+	DestinationCode string
+	DepartureDate   pgtype.Date
+	ReturnDate      pgtype.Date
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type User struct {
 	ID        pgtype.UUID
 	Email     string
