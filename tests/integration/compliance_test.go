@@ -177,6 +177,57 @@ func assertRequirementStatus(
 	)
 }
 
+func assertBadRequest(
+	t *testing.T,
+	router http.Handler,
+	body string,
+	expectedError string,
+) {
+	t.Helper()
+
+	req := httptest.NewRequest(
+		http.MethodPost,
+		"/compliance/check",
+		bytes.NewBufferString(body),
+	)
+
+	req.Header.Set(
+		"Content-Type",
+		"application/json",
+	)
+
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf(
+			"expected status 400, got %d: %s",
+			rec.Code,
+			rec.Body.String(),
+		)
+	}
+
+	var response struct {
+		Error string `json:"error"`
+	}
+
+	if err := json.NewDecoder(rec.Body).Decode(&response); err != nil {
+		t.Fatalf(
+			"decode response: %v",
+			err,
+		)
+	}
+
+	if response.Error != expectedError {
+		t.Fatalf(
+			"expected error %q, got %q",
+			expectedError,
+			response.Error,
+		)
+	}
+}
+
 func TestComplianceCheckIntegration_USA_AllOK(t *testing.T) {
 	pool, router := setupIntegrationTest(t)
 	defer pool.Close()
@@ -398,5 +449,122 @@ func TestComplianceCheckIntegration_CHN_2027_VisaRequired(
 		response,
 		"stay_duration",
 		"ok",
+	)
+}
+
+func TestComplianceCheckIntegration_MissingNationality(
+	t *testing.T,
+) {
+	pool, router := setupIntegrationTest(t)
+	defer pool.Close()
+
+	body := `{
+		"destination_code": "USA",
+		"departure_date": "2026-10-01",
+		"return_date": "2026-10-20",
+		"passport_expiry": "2027-06-01",
+		"visa_status": "not_required",
+		"eta_status": "obtained"
+	}`
+
+	assertBadRequest(
+		t,
+		router,
+		body,
+		"nationality_code is required",
+	)
+}
+
+func TestComplianceCheckIntegration_InvalidNationality(
+	t *testing.T,
+) {
+	pool, router := setupIntegrationTest(t)
+	defer pool.Close()
+
+	body := `{
+		"nationality_code": "HR",
+		"destination_code": "USA",
+		"departure_date": "2026-10-01",
+		"return_date": "2026-10-20",
+		"passport_expiry": "2027-06-01",
+		"visa_status": "not_required",
+		"eta_status": "obtained"
+	}`
+
+	assertBadRequest(
+		t,
+		router,
+		body,
+		"nationality_code must be 3 characters",
+	)
+}
+
+func TestComplianceCheckIntegration_MissingDestination(
+	t *testing.T,
+) {
+	pool, router := setupIntegrationTest(t)
+	defer pool.Close()
+
+	body := `{
+		"nationality_code": "HRV",
+		"departure_date": "2026-10-01",
+		"return_date": "2026-10-20",
+		"passport_expiry": "2027-06-01",
+		"visa_status": "not_required",
+		"eta_status": "obtained"
+	}`
+
+	assertBadRequest(
+		t,
+		router,
+		body,
+		"destination_code is required",
+	)
+}
+
+func TestComplianceCheckIntegration_InvalidDateRange(
+	t *testing.T,
+) {
+	pool, router := setupIntegrationTest(t)
+	defer pool.Close()
+
+	body := `{
+		"nationality_code": "HRV",
+		"destination_code": "USA",
+		"departure_date": "2026-10-20",
+		"return_date": "2026-10-01",
+		"passport_expiry": "2027-06-01",
+		"visa_status": "not_required",
+		"eta_status": "obtained"
+	}`
+
+	assertBadRequest(
+		t,
+		router,
+		body,
+		"return_date must be on or after departure_date",
+	)
+}
+
+func TestComplianceCheckIntegration_MissingPassportExpiry(
+	t *testing.T,
+) {
+	pool, router := setupIntegrationTest(t)
+	defer pool.Close()
+
+	body := `{
+		"nationality_code": "HRV",
+		"destination_code": "USA",
+		"departure_date": "2026-10-01",
+		"return_date": "2026-10-20",
+		"visa_status": "not_required",
+		"eta_status": "obtained"
+	}`
+
+	assertBadRequest(
+		t,
+		router,
+		body,
+		"passport_expiry is required",
 	)
 }

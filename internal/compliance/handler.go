@@ -26,29 +26,73 @@ type checkRequest struct {
 	ETAStatus       string `json:"eta_status"`
 }
 
+func writeBadRequest(w http.ResponseWriter, message string) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusBadRequest)
+
+	_ = json.NewEncoder(w).Encode(map[string]string{
+		"error": message,
+	})
+}
+
 func (h *Handler) Check(w http.ResponseWriter, r *http.Request) {
 	var body checkRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		writeBadRequest(w, "invalid request body")
 		return
 	}
 
-	departureDate, err := time.Parse("2006-01-02", body.DepartureDate)
-	if err != nil {
-		http.Error(w, "invalid departure_date", http.StatusBadRequest)
+	// Required fields must be checked before parsing dates.
+	if body.NationalityCode == "" {
+		writeBadRequest(w, "nationality_code is required")
 		return
 	}
 
-	returnDate, err := time.Parse("2006-01-02", body.ReturnDate)
-	if err != nil {
-		http.Error(w, "invalid return_date", http.StatusBadRequest)
+	if body.DestinationCode == "" {
+		writeBadRequest(w, "destination_code is required")
 		return
 	}
 
-	passportExpiry, err := time.Parse("2006-01-02", body.PassportExpiry)
+	if body.DepartureDate == "" {
+		writeBadRequest(w, "departure_date is required")
+		return
+	}
+
+	if body.ReturnDate == "" {
+		writeBadRequest(w, "return_date is required")
+		return
+	}
+
+	if body.PassportExpiry == "" {
+		writeBadRequest(w, "passport_expiry is required")
+		return
+	}
+
+	departureDate, err := time.Parse(
+		"2006-01-02",
+		body.DepartureDate,
+	)
 	if err != nil {
-		http.Error(w, "invalid passport_expiry", http.StatusBadRequest)
+		writeBadRequest(w, "invalid departure_date")
+		return
+	}
+
+	returnDate, err := time.Parse(
+		"2006-01-02",
+		body.ReturnDate,
+	)
+	if err != nil {
+		writeBadRequest(w, "invalid return_date")
+		return
+	}
+
+	passportExpiry, err := time.Parse(
+		"2006-01-02",
+		body.PassportExpiry,
+	)
+	if err != nil {
+		writeBadRequest(w, "invalid passport_expiry")
 		return
 	}
 
@@ -63,11 +107,7 @@ func (h *Handler) Check(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := ValidateCheckRequest(req); err != nil {
-		http.Error(
-			w,
-			err.Error(),
-			http.StatusBadRequest,
-		)
+		writeBadRequest(w, err.Error())
 		return
 	}
 
